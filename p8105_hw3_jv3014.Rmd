@@ -1,0 +1,12 @@
+---
+title: "P8105 Homework 3"
+author: "Jia Varkey"
+date: "2026-10-09"
+output: github_document
+---
+
+
+```{r}
+library(tidyverse)
+```
+
