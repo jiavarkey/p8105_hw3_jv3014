@@ -114,9 +114,6 @@ snow_dist =
 ```
 
 
-```
-
-
 ## Problem 2
 
 Accelerometers have become an appealing alternative to self-report techniques for studying physical activity in observational studies and clinical trials, largely because of their relative objectivity. During observation periods, the devices can measure MIMS in a short period; one-minute intervals are common. Because accelerometers can be worn comfortably and unobtrusively, they produce around-the-clock observations.
@@ -126,6 +123,35 @@ This problem uses accelerometer data collected on 250 participants in the NHANES
 Load, tidy, merge, and otherwise organize the data sets. Your final dataset should include all originally observed variables; exclude participants less than 21 years of age, and those with missing demographic data; and encode data with reasonable variable classes (i.e. not numeric, and using factors with the ordering of tables and plots in mind).
 
 ```{r}
+demo_df = read_csv("~/Documents/P8105 Data Science/viz_and_eda/p8105_hw3_jv3014/nhanes_covar.csv", skip = 4) |>
+  janitor::clean_names() |>
+  drop_na()
+
+accel_df = read_csv("nhanes_accel.csv") |>
+  janitor::clean_names()
+
+nhanes = inner_join(demo_df, accel_df, by = "seqn") |>
+  filter(age >= 21) |>
+    mutate(
+    sex = case_match(
+      sex,
+      1 ~ "Male",
+      2 ~ "Female"
+    ),
+    sex = factor(sex, levels = c("Male", "Female")),
+    
+    education = case_match(
+      education,
+      1 ~ "Less than high school",
+      2 ~ "High school equivalent",
+      3 ~ "More than high school"
+    ),
+    education = factor(
+      education, 
+      levels = c("Less than high school", "High school equivalent", "More than high school"),
+      ordered = TRUE
+    )
+  )
 
 ```
 
@@ -133,6 +159,18 @@ Load, tidy, merge, and otherwise organize the data sets. Your final dataset shou
 Produce a reader-friendly table for the number of men and women in each education category, and create a visualization of the age distributions for men and women in each education category. Comment on these items.
 
 ```{r}
+gender_edu =
+  nhanes |>
+  group_by(sex, education) |>
+  summarize(count. = n()) 
+
+age_edu =
+  nhanes |>
+  select(age, sex, education) |>
+  ggplot(aes(x = age, fill = sex)) +
+  geom_density(alpha = .5) +
+  facet_grid(.~education)
+
 
 ```
 
