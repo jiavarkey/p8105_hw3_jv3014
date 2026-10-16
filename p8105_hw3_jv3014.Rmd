@@ -3,10 +3,189 @@ title: "P8105 Homework 3"
 author: "Jia Varkey"
 date: "2026-10-09"
 output: github_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 
 ```{r}
 library(tidyverse)
+library(ggridges)
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
+
+library(p8105.datasets)
+data("ny_noaa")
+```
+
+## Problem 1
+
+```{r}
+ny_noaa
+```
+
+#The goal is to do some exploration of this dataset. To that end, write a short description of the dataset, noting the size and structure of the data, describing some key variables, and indicating the extent to which missing data is an issue. 
+
+The New York NOAA data set measures the precipitation as `prcp`, snow as `snow`, and minimum and maximum temperatures of various New York cities each day. This data set is exceptionally large with dimensions `r ncol(ny_df)` by `r nrow(ny_df)`. There are multiple entries of missing data with the variables `tmax` and `tmin` completely missing. This becomes an issue without enough information to accurately analyze the data. 
+
+# Do some data cleaning. Create separate variables for year, month, and day. Ensure observations for temperature, precipitation, and snowfall are given in reasonable units. For snowfall, what are the most commonly observed values? Why?
+
+```{r}
+
+ny_noaa_clean =
+  ny_noaa |>
+  janitor::clean_names() |>
+  drop_na() |>
+  separate(date, into = c("year", "month", "day")) |>
+  mutate(
+     prcp = prcp / 10,
+     tmax = as.numeric(tmax) / 10,
+     tmin = as.numeric(tmin) / 10
+  ) # converting temperature from tenths of degrees celsius to degrees celsius, precipitation to tenths of mms to mms
+
+
+ny_noaa_clean |>
+  count(snow) |>
+  arrange(desc(n))
+  
+```
+
+The most common observed values for snowfall is 0 mm observed 1112758 times and 25 mm observed 15809 times. For most of the year in Spring, Summer, and Fall it does not snow at all in New York. It also does not snow every day in Winter. So, the most commonly observed amount of snowfall for the whole year would be 0 mm. 
+
+# Make a two-panel plot showing the average max temperature in January and in July in each station across years. Is there any observable / interpretable structure? Any outliers?
+
+```{r}
+jan_july_temp =
+  ny_noaa_clean |>
+  filter(month %in% c("01", "07")) |>
+  group_by(id, year, month) |>
+  summarize(mean_tmax = mean(tmax, na.rm = TRUE), .groups = "drop")
+
+jan_july_temp |>
+  ggplot(aes(x = year, y = mean_tmax, group = id)) +
+  geom_line(alpha = .5) +
+  facet_grid(~month) +
+  labs(
+    title = "New York Average Maximum Temperature in January and July",
+    x = "Year",
+    y = "Average Maximum Temperature",
+    color = "Location",
+    caption = "data from NOAA for multiple weather stations"
+  )
+```
+
+January has a lower overall average mean temperature than July. January has more variation and outliers across the years compared to July. 
+
+
+```{r}
+# tmax vs tmin for the full dataset 
+temp_plot =
+  ny_noaa_clean |>
+  ggplot(aes(x=tmin, y = tmax)) +
+  geom_hex(bins=60) +
+  labs(
+    title = "Temperature (Max vs Min)",
+    x = "Min Temperature (C)",
+    y = "Max Temperature (C)"
+    )
+
+#snow distribution 
+snow_dist =
+  ny_noaa_clean |>
+  filter(snow > 0, snow < 100) |>
+  group_by(year) |>
+  ggplot(aes(x = snow, y = year)) +
+  geom_density_ridges(alpha=.5) +
+   labs(
+    title = "Snowfall Distribution by Year",
+    x = "Snowfall (mm)",
+    y = "Year"
+)
+
+#Two-panel plot
+(temp_plot + snow_dist)
+```
+
+
+```
+
+
+## Problem 2
+
+Accelerometers have become an appealing alternative to self-report techniques for studying physical activity in observational studies and clinical trials, largely because of their relative objectivity. During observation periods, the devices can measure MIMS in a short period; one-minute intervals are common. Because accelerometers can be worn comfortably and unobtrusively, they produce around-the-clock observations.
+
+This problem uses accelerometer data collected on 250 participants in the NHANES study. The participants’ demographic data can be downloaded here, and their accelerometer data can be downloaded here. Variables *MIMS are the MIMS values for each minute of a 24-hour day starting at midnight.
+
+Load, tidy, merge, and otherwise organize the data sets. Your final dataset should include all originally observed variables; exclude participants less than 21 years of age, and those with missing demographic data; and encode data with reasonable variable classes (i.e. not numeric, and using factors with the ordering of tables and plots in mind).
+
+```{r}
+
+```
+
+
+Produce a reader-friendly table for the number of men and women in each education category, and create a visualization of the age distributions for men and women in each education category. Comment on these items.
+
+```{r}
+
+```
+
+
+Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate across minutes to create a total activity variable for each participant. Plot these total activities (y-axis) against age (x-axis); your plot should compare men to women and have separate panels for each education level. Include a trend line or a smooth to illustrate differences. Comment on your plot.
+
+```{r}
+
+```
+
+
+Accelerometer data allows the inspection activity over the course of the day. Make a three-panel plot that shows the 24-hour activity time courses for each education level and use color to indicate sex. Describe in words any patterns or conclusions you can make based on this graph; including smooth trends may help identify differences.
+
+```{r}
+
+```
+
+
+## Problem 3
+
+Citi Bike is a bike sharing system in New York City; riders can rent pedal-powered or electric bikes from starting stations and return them to another station at their destination. Introduced in 2013, the system is immensely popular and expanded rapidly. Riders who use this system often may become “members” with lower rental rates.
+
+This zip file contains data on rides taken on the NYC Citi Bike system. Files contain 1% of all rides with a total duration less than 4 hours in each of four months. Import, clean, and tidy these data, and describe the resulting dataset.
+
+```{r}
+
+```
+
+
+Produce a reader-friendly table showing the total number of rides in each combination of year and month separating casual riders and Citi Bike members. Comment on these results.
+
+```{r}
+
+```
+
+
+Make a table showing the 5 most popular starting stations for July 2024; include the number of rides originating from these stations.
+
+```{r}
+
+```
+
+
+Make a plot to investigate the effects of day of the week, month, and year on median ride duration. This plot can include one or more panels, but should facilitate comparison across all variables of interest. Comment on your observations from this plot.
+
+```{r}
+
+```
+
+
+There were relatively few electric Citi Bikes in 2020, but many more are available now. For data in 2024, make a figure that shows the impact of month, membership status, and bike type on the distribution of ride duration. Comment on your results
+
+```{r}
+
 ```
 
