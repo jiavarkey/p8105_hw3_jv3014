@@ -33,7 +33,7 @@ ny_noaa
 
 #The goal is to do some exploration of this dataset. To that end, write a short description of the dataset, noting the size and structure of the data, describing some key variables, and indicating the extent to which missing data is an issue. 
 
-The New York NOAA data set measures the precipitation as `prcp`, snow as `snow`, and minimum and maximum temperatures of various New York cities each day. This data set is exceptionally large with dimensions `r ncol(ny_df)` by `r nrow(ny_df)`. There are multiple entries of missing data with the variables `tmax` and `tmin` completely missing. This becomes an issue without enough information to accurately analyze the data. 
+The New York NOAA data set measures the precipitation as `prcp`, snow as `snow`, and minimum and maximum temperatures of various New York cities each day. This data set is exceptionally large with dimensions `r ncol(ny_noaa)` by `r nrow(ny_noaa)`. There are multiple entries of missing data with the variables `tmax` and `tmin` completely missing. This becomes an issue without enough information to accurately analyze the data. 
 
 # Do some data cleaning. Create separate variables for year, month, and day. Ensure observations for temperature, precipitation, and snowfall are given in reasonable units. For snowfall, what are the most commonly observed values? Why?
 
@@ -110,7 +110,7 @@ snow_dist =
 )
 
 #Two-panel plot
-(temp_plot + snow_dist)
+gridExtra::grid.arrange(temp_plot, snow_dist, ncol = 2)
 ```
 
 
@@ -162,32 +162,89 @@ Produce a reader-friendly table for the number of men and women in each educatio
 gender_edu =
   nhanes |>
   group_by(sex, education) |>
-  summarize(count. = n()) 
+  summarize(count. = n()) |>
+  knitr::kable(caption = "Participant Count by Education Level and Sex")
 
 age_edu =
   nhanes |>
   select(age, sex, education) |>
   ggplot(aes(x = age, fill = sex)) +
   geom_density(alpha = .5) +
-  facet_grid(.~education)
+  facet_grid(.~education) +
+  labs(
+    title = "Age Distribution Across Education Categories by Sex",
+    x = "Age (years)",
+    y = "Density",
+    fill = "Sex"
+  )
 
+gender_edu
+age_edu
 
 ```
 
+The highest concentration of participants resides in the "More than high school" tier. In contrast, fewer individuals fall into the remaining tiers, meaning trends derived from the highest education group may show more statistical stability. Within the Less than high school and High school equivalent cohorts, the age curve leans significantly toward older individuals (skewed heavily toward ages 60–80). Within the More than high school tier, the distribution slopes in the opposite direction. It features a prominent peak of younger adults (ages 20–40), demonstrating that higher education levels skew younger within this sample.
 
-Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate across minutes to create a total activity variable for each participant. Plot these total activities (y-axis) against age (x-axis); your plot should compare men to women and have separate panels for each education level. Include a trend line or a smooth to illustrate differences. Comment on your plot.
+
+# Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate across minutes to create a total activity variable for each participant. Plot these total activities (y-axis) against age (x-axis); your plot should compare men to women and have separate panels for each education level. Include a trend line or a smooth to illustrate differences. Comment on your plot.
 
 ```{r}
+total_activity_df = 
+  nhanes |> 
+  pivot_longer(
+    cols = starts_with("min"),
+    names_to = "minute",
+    values_to = "mims"
+  ) |>
+  group_by(seqn, sex, age, education) |>
+  summarize(total_activity = sum(mims), .groups = "drop")
 
+ggplot(total_activity_df, aes(x = age, y = total_activity, color = sex)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(se = FALSE, method = "loess") +
+  facet_grid(. ~ education) +
+  labs(
+    title = "Total Daily Activity vs. Age by Education Level",
+    x = "Age (Years)",
+    y = "Total Daily Activity (MIMS)",
+    color = "Sex"
+  )
 ```
 
+Across all education cohorts, total movement patterns reliably degrade as individuals age.
+In the Less than high school cohort, males exhibit marginally higher movement totals across middle age, but lines cross as they advance past age 60. In the High school equivalent and More than high school brackets, females maintain a higher volume of daily activity across almost all life stages compared to males.
 
-Accelerometer data allows the inspection activity over the course of the day. Make a three-panel plot that shows the 24-hour activity time courses for each education level and use color to indicate sex. Describe in words any patterns or conclusions you can make based on this graph; including smooth trends may help identify differences.
+# Accelerometer data allows the inspection activity over the course of the day. Make a three-panel plot that shows the 24-hour activity time courses for each education level and use color to indicate sex. Describe in words any patterns or conclusions you can make based on this graph; including smooth trends may help identify differences.
 
 ```{r}
+diurnal_df = 
+  nhanes |>
+  pivot_longer(
+    cols = starts_with("min"),
+    names_to = "minute",
+    values_to = "mims"
+  ) |>
+  mutate(minute = as.numeric(str_remove(minute, "min"))) |>
+  group_by(minute, sex, education) |>
+  summarize(mean_mims = mean(mims), .groups = "drop")
 
+ggplot(diurnal_df, aes(x = minute, y = mean_mims, color = sex)) +
+  geom_line(alpha = 0.3) +
+  geom_smooth(aes(group = sex), method = "loess", span = 0.15, se = FALSE) +
+  facet_wrap(~ education, nrow = 3) +
+  scale_x_continuous(
+    breaks = seq(0, 1440, by = 240),
+    labels = c("Midnight", "4 AM", "8 AM", "Noon", "4 PM", "8 PM", "Midnight")
+  ) +
+  labs(
+    title = "24-Hour Activity Profiles by Education Level and Sex",
+    x = "Time of Day",
+    y = "Average Activity (MIMS)",
+    color = "Sex"
+  )
 ```
 
+All groups activity drops to near zero during expected sleeping hours (11 PM to 5 AM), spikes sharply between 6 AM and 9 AM as individuals wake up, and tapers down in the late evening.
 
 ## Problem 3
 
