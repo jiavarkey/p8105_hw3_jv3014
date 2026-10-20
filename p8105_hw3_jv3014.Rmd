@@ -8,7 +8,7 @@ editor_options:
 ---
 
 
-```{r}
+```{r, include = FALSE}
 library(tidyverse)
 library(ggridges)
 theme_set(theme_minimal() + theme(legend.position = "bottom"))
@@ -31,11 +31,8 @@ data("ny_noaa")
 ny_noaa
 ```
 
-#The goal is to do some exploration of this dataset. To that end, write a short description of the dataset, noting the size and structure of the data, describing some key variables, and indicating the extent to which missing data is an issue. 
-
 The New York NOAA data set measures the precipitation as `prcp`, snow as `snow`, and minimum and maximum temperatures of various New York cities each day. This data set is exceptionally large with dimensions `r ncol(ny_noaa)` by `r nrow(ny_noaa)`. There are multiple entries of missing data with the variables `tmax` and `tmin` completely missing. This becomes an issue without enough information to accurately analyze the data. 
 
-# Do some data cleaning. Create separate variables for year, month, and day. Ensure observations for temperature, precipitation, and snowfall are given in reasonable units. For snowfall, what are the most commonly observed values? Why?
 
 ```{r}
 
@@ -59,7 +56,6 @@ ny_noaa_clean |>
 
 The most common observed values for snowfall is 0 mm observed 1112758 times and 25 mm observed 15809 times. For most of the year in Spring, Summer, and Fall it does not snow at all in New York. It also does not snow every day in Winter. So, the most commonly observed amount of snowfall for the whole year would be 0 mm. 
 
-# Make a two-panel plot showing the average max temperature in January and in July in each station across years. Is there any observable / interpretable structure? Any outliers?
 
 ```{r}
 jan_july_temp =
@@ -116,12 +112,6 @@ gridExtra::grid.arrange(temp_plot, snow_dist, ncol = 2)
 
 ## Problem 2
 
-Accelerometers have become an appealing alternative to self-report techniques for studying physical activity in observational studies and clinical trials, largely because of their relative objectivity. During observation periods, the devices can measure MIMS in a short period; one-minute intervals are common. Because accelerometers can be worn comfortably and unobtrusively, they produce around-the-clock observations.
-
-This problem uses accelerometer data collected on 250 participants in the NHANES study. The participants’ demographic data can be downloaded here, and their accelerometer data can be downloaded here. Variables *MIMS are the MIMS values for each minute of a 24-hour day starting at midnight.
-
-Load, tidy, merge, and otherwise organize the data sets. Your final dataset should include all originally observed variables; exclude participants less than 21 years of age, and those with missing demographic data; and encode data with reasonable variable classes (i.e. not numeric, and using factors with the ordering of tables and plots in mind).
-
 ```{r}
 demo_df = read_csv("~/Documents/P8105 Data Science/viz_and_eda/p8105_hw3_jv3014/nhanes_covar.csv", skip = 4) |>
   janitor::clean_names() |>
@@ -156,8 +146,6 @@ nhanes = inner_join(demo_df, accel_df, by = "seqn") |>
 ```
 
 
-Produce a reader-friendly table for the number of men and women in each education category, and create a visualization of the age distributions for men and women in each education category. Comment on these items.
-
 ```{r}
 gender_edu =
   nhanes |>
@@ -186,8 +174,6 @@ age_edu
 The highest concentration of participants resides in the "More than high school" tier. In contrast, fewer individuals fall into the remaining tiers, meaning trends derived from the highest education group may show more statistical stability. Within the Less than high school and High school equivalent cohorts, the age curve leans significantly toward older individuals (skewed heavily toward ages 60–80). Within the More than high school tier, the distribution slopes in the opposite direction. It features a prominent peak of younger adults (ages 20–40), demonstrating that higher education levels skew younger within this sample.
 
 
-# Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate across minutes to create a total activity variable for each participant. Plot these total activities (y-axis) against age (x-axis); your plot should compare men to women and have separate panels for each education level. Include a trend line or a smooth to illustrate differences. Comment on your plot.
-
 ```{r}
 total_activity_df = 
   nhanes |> 
@@ -214,7 +200,6 @@ ggplot(total_activity_df, aes(x = age, y = total_activity, color = sex)) +
 Across all education cohorts, total movement patterns reliably degrade as individuals age.
 In the Less than high school cohort, males exhibit marginally higher movement totals across middle age, but lines cross as they advance past age 60. In the High school equivalent and More than high school brackets, females maintain a higher volume of daily activity across almost all life stages compared to males.
 
-# Accelerometer data allows the inspection activity over the course of the day. Make a three-panel plot that shows the 24-hour activity time courses for each education level and use color to indicate sex. Describe in words any patterns or conclusions you can make based on this graph; including smooth trends may help identify differences.
 
 ```{r}
 diurnal_df = 
@@ -248,39 +233,93 @@ All groups activity drops to near zero during expected sleeping hours (11 PM to 
 
 ## Problem 3
 
-Citi Bike is a bike sharing system in New York City; riders can rent pedal-powered or electric bikes from starting stations and return them to another station at their destination. Introduced in 2013, the system is immensely popular and expanded rapidly. Riders who use this system often may become “members” with lower rental rates.
-
 This zip file contains data on rides taken on the NYC Citi Bike system. Files contain 1% of all rides with a total duration less than 4 hours in each of four months. Import, clean, and tidy these data, and describe the resulting dataset.
 
 ```{r}
+library(lubridate)
+
+jan_20 = read_csv("citibike/Jan 2020 Citi.csv.zip") |>
+  mutate(year = 2020, month = "January")
+jan_24 = read_csv("citibike/Jan 2024 Citi.csv.zip") |>
+  mutate(year = 2024, month = "January")
+jul_20 = read_csv("citibike/July 2020 Citi.csv.zip") |>
+  mutate(year = 2020, month = "July")
+jul_24 = read_csv("citibike/July 2024 Citi.csv.zip") |>
+  mutate(year = 2024, month = "July")
+
+data = bind_rows(jan_20, jan_24, jul_20, jul_24)
+
+citibike =
+  data |>
+  janitor::clean_names() |>
+  drop_na() |>
+  filter(duration < 240)
 
 ```
 
+The final tidied dataset contains thousands of observations representing a 1% sample of trips under 4 hours. The columns clearly document the bike type (classic vs. electric), trip timing, station endpoints, and user membership category.
 
-Produce a reader-friendly table showing the total number of rides in each combination of year and month separating casual riders and Citi Bike members. Comment on these results.
+
+```{r}
+citibike |>
+group_by(year, month, member_casual) |>
+summarise(total_rides = n(), .groups = "drop") |>
+pivot_wider(names_from = member_casual, values_from = total_rides, values_fill = 0) |>
+mutate(Total = casual + member) |>
+rename(Year = year, Month = month, `Casual Riders` = casual, `Citi Bike Members` = member) |>
+knitr::kable(caption = "Total Number of Rides")
+
+```
+
+There is a substantial increase in overall ridership from 2020 to 2024. Summer ridership (July) drastically outpaces winter ridership (January) across both user types due to favorable weather conditions. Citi Bike Members consistently represent the vast majority of trips. This is especially visible during January, confirming that members rely heavily on the system for year-round, utilitarian daily commuting, while casual riders are more active during warm weather.
+
 
 ```{r}
 
+citibike |>
+filter(year == 2024, month == "July", !is.na(start_station_name)) |>
+group_by(start_station_name) |>
+summarise(Number_of_Rides = n(), .groups = "drop") |>
+slice_max(order_by = Number_of_Rides, n = 5) |>
+knitr::kable(caption = "Five Most Popular Citibike Starting Stations July 2024")
+
 ```
 
 
-Make a table showing the 5 most popular starting stations for July 2024; include the number of rides originating from these stations.
 
 ```{r}
+median_duration_df <- citibike |>
+  group_by(year, month, weekdays) |>
+  summarise(median_duration = median(duration), .groups = "drop")
 
+ggplot(median_duration_df, aes(x = weekdays, y = median_duration, group = interaction(year, month))) +
+  geom_line() +
+  geom_point() +
+  facet_grid(year ~ month) +
+  labs(
+    title = "Effects of Time on Median Citi Bike Ride Durations",
+    x = "Day of the Week",
+    y = "Median Ride Duration (Minutes)"
+  ) 
 ```
 
+Across all panels, the median ride duration spikes significantly on Saturdays and Sundays compared to weekdays.  July trips have a higher median duration than January trips. Colder weather in January naturally discourages lingering rides. The median ride durations are generally shorter in 2024 than in 2020.
 
-Make a plot to investigate the effects of day of the week, month, and year on median ride duration. This plot can include one or more panels, but should facilitate comparison across all variables of interest. Comment on your observations from this plot.
 
 ```{r}
+citibike_2024 = citibike |>
+  filter(year == 2024)
 
+ggplot(citibike_2024, aes(x = member_casual, y = duration, fill = rideable_type)) +
+  geom_boxplot(alpha = 0.5) +
+  facet_grid(month ~ rideable_type) +
+  labs(
+    title = "2024 Citi Bike Ride Duration Distributions",
+    x = "User Membership Status",
+    y = "Ride Duration (Minutes)",
+    fill = "Bike Type"
+  )
 ```
 
-
-There were relatively few electric Citi Bikes in 2020, but many more are available now. For data in 2024, make a figure that shows the impact of month, membership status, and bike type on the distribution of ride duration. Comment on your results
-
-```{r}
-
-```
+Electric bike trips show a much tighter distribution with a lower median duration than classic bikes. Because ebikes travel faster, trips are completed quicker. Casual riders have a much wider distribution spread with longer tail ends (higher variance) regardless of bike type. Members display highly predictable, compact distributions centered around shorter trip lengths (10–15 minutes). July pushes both groups to extend their classic bike rides longer, causing a rightward skew in the distribution density compared to January.
 
